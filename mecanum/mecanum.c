@@ -46,11 +46,38 @@ void motor_run(motor_t* motor, float power){
 	}
 }
 
-void mecanum_robot_init(four_wheeled_robot_t *mecanum_robot){
+
+void encoder_init(encoder_t* encoder, uint32_t time){
+	encoder->last_time = time;
+	encoder->half_auto_reload = (int32_t)__HAL_TIM_GET_AUTORELOAD(encoder->timer) / 2;
+	HAL_TIM_Encoder_Start(encoder->timer, TIM_CHANNEL_ALL);
+}
+
+void encoder_callback(encoder_t* encoder, uint32_t time){
+	uint32_t d_t = time - encoder->last_time;
+	int32_t d_p = (int32_t)__HAL_TIM_GET_COUNTER(encoder->timer) - encoder->half_auto_reload;
+	encoder->speed = (encoder_speed_t)d_p / (encoder_speed_t)d_t;
+	encoder->last_time = time;
+	__HAL_TIM_SET_COUNTER(encoder->timer, (uint32_t)encoder->half_auto_reload);
+
+	//printf("d_p: %li, d_t: %lu\r\n", d_p, d_t);
+}
+
+encoder_speed_t encoder_get_speed(encoder_t* encoder){
+	return encoder->speed;
+}
+
+
+void mecanum_robot_init(four_wheeled_robot_t *mecanum_robot, uint32_t time){
 	motor_init(mecanum_robot->fl_motor);
 	motor_init(mecanum_robot->fr_motor);
 	motor_init(mecanum_robot->bl_motor);
 	motor_init(mecanum_robot->br_motor);
+
+	encoder_init(mecanum_robot->fl_encoder, time);
+	encoder_init(mecanum_robot->fr_encoder, time);
+	encoder_init(mecanum_robot->bl_encoder, time);
+	encoder_init(mecanum_robot->br_encoder, time);
 }
 
 void mecanum_robot_stop(four_wheeled_robot_t *mecanum_robot){
@@ -93,4 +120,18 @@ void mecanum_robot_move(four_wheeled_robot_t *mecanum_robot, float power, float 
 	motor_run(mecanum_robot->fr_motor, fr);
 	motor_run(mecanum_robot->bl_motor, bl);
 	motor_run(mecanum_robot->br_motor, br);
+}
+
+void mecanum_robot_encoders_callback(four_wheeled_robot_t *mecanum_robot, uint32_t time){
+	encoder_callback(mecanum_robot->fl_encoder, time);
+	encoder_callback(mecanum_robot->fr_encoder, time);
+	encoder_callback(mecanum_robot->bl_encoder, time);
+	encoder_callback(mecanum_robot->br_encoder, time);
+}
+
+void mecanum_robot_get_encoder_speeds(four_wheeled_robot_t *mecanum_robot, four_wheeled_robot_encoders_speeds_t* encoders_speeds){
+	encoders_speeds->fl_speed = encoder_get_speed(mecanum_robot->fl_encoder);
+	encoders_speeds->fr_speed = encoder_get_speed(mecanum_robot->fr_encoder);
+	encoders_speeds->bl_speed = encoder_get_speed(mecanum_robot->bl_encoder);
+	encoders_speeds->br_speed = encoder_get_speed(mecanum_robot->br_encoder);
 }
