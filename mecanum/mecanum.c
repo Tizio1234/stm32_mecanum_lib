@@ -59,8 +59,6 @@ void encoder_callback(encoder_t* encoder, uint32_t time){
 	encoder->speed = (encoder_speed_t)d_p / (encoder_speed_t)d_t;
 	encoder->last_time = time;
 	__HAL_TIM_SET_COUNTER(encoder->timer, (uint32_t)encoder->half_auto_reload);
-
-	//printf("d_p: %li, d_t: %lu\r\n", d_p, d_t);
 }
 
 encoder_speed_t encoder_get_speed(encoder_t* encoder){
